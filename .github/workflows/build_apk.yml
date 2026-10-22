@@ -17,14 +17,90 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Build Safe APK Package
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Build Real Native APK 2026
       run: |
-        mkdir -p app/build/outputs/apk/debug/
-        # تجهيز هيكل وتطبيق الأوتو كليكر بملف APK نظيف وقابل للتثبيت
-        cd app
-        echo "com.ak7.autoclicker" > package.txt
-        zip -r app-debug.apk * || true
-        mv app-debug.apk build/outputs/apk/debug/ || true
+        # إنشاء هيكل التطبيق والملفات الأساسية المعتمدة
+        mkdir -p app/src/main java com/ak7/autoclicker
+        
+        # التأكد من وجود ملف الـ AndroidManifest الأساسي
+        if [ ! -f "app/src/main/AndroidManifest.xml" ]; then
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.ak7.autoclicker"
+    android:versionCode="1"
+    android:versionName="1.0">
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE"/>
+    <application
+        android:label="Ak7 Pro Clicker"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
+        android:allowBackup="true"
+        android:exported="true">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+EOF
+        fi
+
+        # تجميع موارد وتطبيق الأندرويد باستخدام Gradle الحقيقي
+        if [ ! -f "build.gradle" ]; then
+          echo "allprojects { repositories { google() mavenCentral() } }" > build.gradle
+        fi
+        
+        if [ ! -f "settings.gradle" ]; then
+          echo "include ':app'" > settings.gradle
+        fi
+
+        if [ ! -f "app/build.gradle" ]; then
+          mkdir -p app
+          cat << 'EOF' > app/build.gradle
+plugins {
+    id 'com.android.application'
+}
+android {
+    namespace 'com.ak7.autoclicker'
+    compileSdk 34
+    defaultConfig {
+        applicationId "com.ak7.autoclicker"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+}
+EOF
+        fi
+
+        # تفعيل بلجن أندرويد بالملف الجذري لضمان الترابط
+        cat << 'EOF' > build.gradle
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.2.0'
+    }
+}
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+EOF
+
+        gradle wrapper --gradle-version 8.5
+        chmod +x gradlew
+        ./gradlew assembleDebug --no-daemon
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
