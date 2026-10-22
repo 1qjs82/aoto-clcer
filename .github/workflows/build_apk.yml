@@ -20,72 +20,12 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Compile and Package APK directly
+    - name: Build APK via Gradle
       run: |
-        # 1. إعداد المسارات وأدوات البناء
-        BUILD_TOOLS_DIR=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
-        PLATFORM_DIR=$(ls -d $ANDROID_HOME/platforms/android-* | tail -n 1)
-        
-        mkdir -p build/gen build/obj build/apk
-
-        # 2. إنشاء هيكل بسيط لتطبيق شغّال 100%
-        mkdir -p app/src/main/res/values
-        cat << 'EOF' > app/src/main/AndroidManifest.xml
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-            package="com.ak7.autoclicker"
-            android:versionCode="1"
-            android:versionName="1.0">
-            <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-            <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE"/>
-            <application android:label="Ak7 Pro Clicker" android:icon="@android:drawable/sym_def_app_icon">
-                <activity android:name="com.ak7.autoclicker.MainActivity" android:exported="true">
-                    <intent-filter>
-                        <action android:name="android.intent.action.MAIN" />
-                        <category android:name="android.intent.category.LAUNCHER" />
-                    </intent-filter>
-                </activity>
-            </application>
-        </manifest>
-EOF
-
-        cat << 'EOF' > app/src/main/res/values/strings.xml
-        <resources>
-            <string name="app_name">Ak7 Pro Clicker</string>
-        </resources>
-EOF
-
-        mkdir -p app/src/main/java/com/ak7/autoclicker
-        cat << 'EOF' > app/src/main/java/com/ak7/autoclicker/MainActivity.java
-        package com.ak7.autoclicker;
-        import android.app.Activity;
-        import android.os.Bundle;
-        public class MainActivity extends Activity {
-            @Override
-            protected void onCreate(Bundle savedInstanceState) {
-                super.onCreate(savedInstanceState);
-            }
-        }
-EOF
-
-        # 3. تجميع الموارد وإملاء الـ APK
-        $BUILD_TOOLS_DIR/aapt2 compile --dir app/src/main/res -o build/res.zip
-        $BUILD_TOOLS_DIR/aapt2 link -o build/unaligned.apk -I $PLATFORM_DIR/android.jar --manifest app/src/main/AndroidManifest.xml build/res.zip --java build/gen
-
-        # 4. تحويل أكواد الجافا إلى Dex
-        javac -cp $PLATFORM_DIR/android.jar -d build/obj build/gen/com/ak7/autoclicker/*.java app/src/main/java/com/ak7/autoclicker/*.java
-        $BUILD_TOOLS_DIR/d8 --output build/apk/ $(find build/obj -name "*.class")
-
-        # 5. دموج الـ Dex والتوقيع الرقمي للـ APK
-        cd build
-        $BUILD_TOOLS_DIR/aapt add unaligned.apk apk/classes.dex
-        
-        # إنشاء مفتاح توقيع مؤقت وتوقيع التطبيق
-        keytool -genkeypair -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -dname "CN=Android Debug,O=Android,C=US"
-        $BUILD_TOOLS_DIR/apksigner sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out app-debug.apk unaligned.apk
-
-        # 6. تجهيز المجلد المخرج
-        mkdir -p ../app/build/outputs/apk/debug/
-        cp app-debug.apk ../app/build/outputs/apk/debug/app-debug.apk
+        sudo apt-get update && sudo apt-get install -y gradle
+        gradle wrapper --gradle-version 8.4
+        chmod +x gradlew
+        ./gradlew assembleDebug --no-daemon
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
