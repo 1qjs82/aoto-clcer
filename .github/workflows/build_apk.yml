@@ -17,12 +17,14 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
+    - name: Install Gradle
+      run: sudo apt-get update && sudo apt-get install -y gradle
+
     - name: Build with Gradle
-      run: chmod +x gradlew && ./gradlew assembleDebug
+      run: gradle assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v3
       with:
         name: ak7-autoclicker-apk
         path: app/build/outputs/apk/debug/app-debug.apk
-
