@@ -17,17 +17,21 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-
-    - name: Build with Real Android Gradle
+    - name: Auto-Configure Project & Gradle
       run: |
-        sudo apt-get update && sudo apt-get install -y gradle
-        if [ ! -f "gradlew" ]; then
-          gradle wrapper
+        # ضبط الإعدادات الجذرية تلقائياً لضمان نجاح البناء
+        echo "include ':app'" > settings.gradle
+        
+        if [ ! -f "build.gradle" ]; then
+          echo "buildscript { repositories { google() mavenCentral() } dependencies { classpath 'com.android.tools.build:gradle:8.1.0' } }" > build.gradle
         fi
-        chmod +x gradlew || true
-        ./gradlew assembleDebug
+
+        gradle wrapper --gradle-version 8.0
+
+    - name: Build Real APK with Gradle
+      run: |
+        chmod +x gradlew
+        ./gradlew assembleDebug --no-daemon
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
