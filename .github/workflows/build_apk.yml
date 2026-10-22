@@ -20,12 +20,10 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Build with Gradle
+    - name: Fast Build with Gradle Direct
       run: |
         sudo apt-get update && sudo apt-get install -y gradle
-        gradle wrapper --gradle-version 8.4
-        chmod +x gradlew
-        ./gradlew assembleDebug --no-daemon
+        gradle assembleDebug --no-daemon
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
