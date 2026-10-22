@@ -20,83 +20,12 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Repair Code & Build Native APK
+    - name: Build with Gradle
       run: |
-        # 1. إعداد مسارات البناء والأدوات
-        BUILD_TOOLS_DIR=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
-        PLATFORM_DIR=$(ls -d $ANDROID_HOME/platforms/android-* | tail -n 1)
-        
-        mkdir -p build/gen build/obj build/apk app/build/outputs/apk/debug/
-
-        # 2. ضمان وجود الملفات بالشكل الصحيح والكامل
-        mkdir -p app/src/main/res/xml
-        mkdir -p app/src/main/res/values
-
-        cat << 'EOF' > app/src/main/res/values/strings.xml
-        <resources>
-            <string name="app_name">Ak7 Pro Clicker</string>
-            <string name="accessibility_desc">خدمة الأوتو كليكر الخارقة Ak7 Pro</string>
-        </resources>
-EOF
-
-        cat << 'EOF' > app/src/main/res/xml/accessibility_service_config.xml
-        <?xml version="1.0" encoding="utf-8"?>
-        <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-            android:accessibilityEventTypes="typeAllMask"
-            android:accessibilityFeedbackType="feedbackGeneric"
-            android:accessibilityFlags="flagDefault|flagRequestTouchExplorationMode|flagRetrieveWindowContent"
-            android:canPerformGestures="true"
-            android:canRetrieveWindowContent="true"
-            android:description="@string/accessibility_desc"
-            android:notificationTimeout="100" />
-EOF
-
-        cat << 'EOF' > app/src/main/AndroidManifest.xml
-        <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-            package="com.ak7.autoclicker"
-            android:versionCode="1"
-            android:versionName="1.0">
-            <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
-            <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-            <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE"/>
-            <application 
-                android:label="Ak7 Pro Clicker" 
-                android:icon="@android:drawable/sym_def_app_icon"
-                android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
-                <activity android:name="com.ak7.autoclicker.MainActivity" android:exported="true">
-                    <intent-filter>
-                        <action android:name="android.intent.action.MAIN" />
-                        <category android:name="android.intent.category.LAUNCHER" />
-                    </intent-filter>
-                </activity>
-                <service android:name="com.ak7.autoclicker.ClickerAccessibilityService"
-                    android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
-                    android:exported="true">
-                    <intent-filter>
-                        <action android:name="android.accessibilityservice.AccessibilityService" />
-                    </intent-filter>
-                    <meta-data android:name="android.accessibilityservice.accessibilityservice"
-                        android:resource="@xml/accessibility_service_config" />
-                </service>
-            </application>
-        </manifest>
-EOF
-
-        # 3. تجميع الموارد وتحويل كود الجافا إلى Dex لنظام الأندرويد
-        $BUILD_TOOLS_DIR/aapt2 compile --dir app/src/main/res -o build/res.zip
-        $BUILD_TOOLS_DIR/aapt2 link -o build/unaligned.apk -I $PLATFORM_DIR/android.jar --manifest app/src/main/AndroidManifest.xml build/res.zip --java build/gen
-
-        javac -cp $PLATFORM_DIR/android.jar -d build/obj build/gen/com/ak7/autoclicker/*.java app/src/main/java/com/ak7/autoclicker/*.java
-        $BUILD_TOOLS_DIR/d8 --output build/apk/ $(find build/obj -name "*.class")
-
-        # 4. دمج الـ DEX والتوقيع الإلكتروني للـ APK
-        cd build
-        $BUILD_TOOLS_DIR/aapt add unaligned.apk apk/classes.dex
-        
-        keytool -genkeypair -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -dname "CN=Android Debug,O=Android,C=US"
-        $BUILD_TOOLS_DIR/apksigner sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android --out app-debug.apk unaligned.apk
-
-        cp app-debug.apk ../app/build/outputs/apk/debug/app-debug.apk
+        sudo apt-get update && sudo apt-get install -y gradle
+        gradle wrapper --gradle-version 8.4
+        chmod +x gradlew
+        ./gradlew assembleDebug --no-daemon
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
