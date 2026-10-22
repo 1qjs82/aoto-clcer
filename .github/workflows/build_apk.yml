@@ -17,20 +17,17 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Build Project Directly
-      run: |
-        export ANDROID_HOME=$HOME/android-sdk
-        mkdir -p app/build/outputs/apk/debug/
-        javac -version
-        # بناء هيكل المشروع لتوليد الـ APK المبدئي
-        cd app && javac src/main/java/com/ak7/autoclicker/*.java -d . || true
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
 
-    - name: Package APK
+    - name: Build with Real Android Gradle
       run: |
-        cd app
-        jar cvf app-debug.apk *
-        mkdir -p build/outputs/apk/debug/
-        mv app-debug.apk build/outputs/apk/debug/
+        sudo apt-get update && sudo apt-get install -y gradle
+        if [ ! -f "gradlew" ]; then
+          gradle wrapper
+        fi
+        chmod +x gradlew || true
+        ./gradlew assembleDebug
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
